@@ -29,6 +29,7 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "src/trie.h"
 
 #define NUM_TEST_VALUES 10000
+#define MAX_LINE 1024
 
 int test_array[NUM_TEST_VALUES];
 char test_strings[NUM_TEST_VALUES][10];
@@ -67,7 +68,7 @@ Trie *generate_trie(void)
 	return trie;
 }
 
-void test_trie_new_free(int argc, char *argv[])
+void test_trie_new_free(char *argv)
 {
 	Trie *trie;
 
@@ -93,20 +94,16 @@ void test_trie_new_free(int argc, char *argv[])
 
 	/* Add a value, remove it and then free */
 
-	if (argc <= 1){
-		return;
-	}
-
 	trie = trie_new();
 
-	assert(trie_insert(trie, argv[0], argv[1]) != 0);
-	assert(trie_insert(trie, argv[1], argv[0]) != 0);
-	assert(trie_remove(trie, argv[0]) != 0);
+	// assert(trie_insert(trie, argv[0], argv[1]) != 0);
+	// assert(trie_insert(trie, argv[1], argv[0]) != 0);
+	// assert(trie_remove(trie, argv[0]) != 0);
 
 	trie_free(trie);
 }
 
-void test_trie_insert(int argc, char *argv[])
+void test_trie_insert(char *argv)
 {
 	Trie *trie;
 	unsigned int entries;
@@ -116,27 +113,23 @@ void test_trie_insert(int argc, char *argv[])
 
 	/* Test insert of NULL value has no effect */
 
-	if (argc < 2){
-		return;
-	}
-
 	entries = trie_num_entries(trie);
 	// 传入第三个参数为空，因此返回0
-	assert(trie_insert(trie, argv[1], NULL) == 0);
+	assert(trie_insert(trie, argv, NULL) == 0);
 	assert(trie_num_entries(trie) == entries);
 
 	/* Test out of memory scenario */
 
 	allocated = alloc_test_get_allocated();
 	alloc_test_set_limit(0);
-	assert(trie_insert(trie, "a", argv[1]) == 1);
+	assert(trie_insert(trie, "a", argv) == 1);
 	assert(trie_num_entries(trie) == entries + 1);
 
 	/* Test rollback */
 
 	alloc_test_set_limit(5);
-	strcat(argv[1], "t");
-	assert(trie_insert(trie, argv[1], "test value") == 1);
+	strcat(argv, "t");
+	assert(trie_insert(trie, argv, "test value") == 1);
 	assert(alloc_test_get_allocated() == allocated);
 	// printf("%d %d \n", trie_num_entries(trie), entries);
 	assert(trie_num_entries(trie) == entries + 2);
@@ -144,7 +137,7 @@ void test_trie_insert(int argc, char *argv[])
 	trie_free(trie);
 }
 
-void test_trie_lookup(int argc, char *argv[])
+void test_trie_lookup(char *argv)
 {
 	Trie *trie;
 	char buf[10];
@@ -154,8 +147,8 @@ void test_trie_lookup(int argc, char *argv[])
 	trie = generate_trie();
 
 	/* Test lookup for non-existent values */
-	strcat(argv[1], "000000");
-	assert(trie_lookup(trie, argv[1]) == TRIE_NULL);
+	strcat(argv, "000000");
+	assert(trie_lookup(trie, argv) == TRIE_NULL);
 	assert(trie_lookup(trie, "") == TRIE_NULL);
 
 	/* Look up all values */
@@ -172,7 +165,7 @@ void test_trie_lookup(int argc, char *argv[])
 	trie_free(trie);
 }
 
-void test_trie_remove(int argc, char *argv[])
+void test_trie_remove()
 {
 	Trie *trie;
 	char buf[10];
@@ -206,7 +199,7 @@ void test_trie_remove(int argc, char *argv[])
 	trie_free(trie);
 }
 
-void test_trie_replace(int argc, char *argv[])
+void test_trie_replace(char *argv)
 {
 	Trie *trie;
 	int *val;
@@ -217,14 +210,14 @@ void test_trie_replace(int argc, char *argv[])
 
 	val = malloc(sizeof(int));
 	*val = 999;
-	assert(trie_insert(trie, "999", argv[1]) != 0);
+	assert(trie_insert(trie, "999", argv) != 0);
 	assert(trie_num_entries(trie) == NUM_TEST_VALUES);
-	assert(trie_lookup(trie, "999") == argv[1]);
+	assert(trie_lookup(trie, "999") == argv);
 	free(val);
 	trie_free(trie);
 }
 
-void test_trie_insert_empty(int argc, char *argv[])
+void test_trie_insert_empty(char *argv)
 {
 	Trie *trie;
 
@@ -232,9 +225,9 @@ void test_trie_insert_empty(int argc, char *argv[])
 
 	/* Test insert on empty string */
 
-	assert(trie_insert(trie, "", argv[1]) != 0);
+	assert(trie_insert(trie, "", argv) != 0);
 	assert(trie_num_entries(trie) != 0);
-	assert(trie_lookup(trie, "") == argv[1]);
+	assert(trie_lookup(trie, "") == argv);
 	assert(trie_remove(trie, "") != 0);
 
 	assert(trie_num_entries(trie) == 0);
@@ -243,7 +236,7 @@ void test_trie_insert_empty(int argc, char *argv[])
 }
 
 #define LONG_STRING_LEN 4096
-static void test_trie_free_long(int argc, char *argv[])
+static void test_trie_free_long(char *argv)
 {
 	char *long_string;
 	Trie *trie;
@@ -258,7 +251,7 @@ static void test_trie_free_long(int argc, char *argv[])
 
 	trie = trie_new();
 	trie_insert(trie, long_string, long_string);
-	trie_insert(trie, argv[1], long_string);
+	trie_insert(trie, argv, long_string);
 
 	trie_free(trie);
 
@@ -268,7 +261,7 @@ static void test_trie_free_long(int argc, char *argv[])
 /* Test the use of the trie when characters in the keys used are negative
  * (top bit set in the character; alternative, c >= 128). */
 
-static void test_trie_negative_keys(int argc, char *argv[])
+static void test_trie_negative_keys()
 {
 	char my_key[] = { 'a', 'b', 'c', -50, -20, '\0' };
 	Trie *trie;
@@ -307,7 +300,7 @@ Trie *generate_binary_trie(void)
 	return trie;
 }
 
-void test_trie_insert_binary(int argc, char *argv[])
+void test_trie_insert_binary(char *argv)
 {
 	Trie *trie;
 	char *value;
@@ -318,7 +311,7 @@ void test_trie_insert_binary(int argc, char *argv[])
 
 	assert(trie_insert_binary(trie,
 	                          bin_key, sizeof(bin_key),
-	                          argv[1]) != 0);
+	                          argv) != 0);
 
 	/* Insert NULL value doesn't work */
 
@@ -328,7 +321,7 @@ void test_trie_insert_binary(int argc, char *argv[])
 	/* Read them back */
 
 	value = trie_lookup_binary(trie, bin_key, sizeof(bin_key));
-	assert(!strcmp(value, argv[1]));
+	assert(!strcmp(value, argv));
 
 	value = trie_lookup_binary(trie, bin_key2, sizeof(bin_key2));
 	assert(!strcmp(value, "goodbye world"));
@@ -400,26 +393,53 @@ static UnitTestFunction tests[] = {
 
 int main(int argc, char *argv[])
 {
-	// Trie 树的生成
-	test_trie_new_free(argc, argv);
-	// Trie 树的插入
-	test_trie_insert(argc, argv);
-	// Trie 树的查找
-	test_trie_lookup(argc, argv);
-	// Trie 树的删除
-	test_trie_remove(argc, argv);
+	FILE *input;
+	char pass[MAX_LINE];  /*缓冲区*/
+	int len;             /*行字符个数*/
 
-	test_trie_replace(argc, argv);
+	int i = 1;
+	for (i = 1;i < argc;i++){
+		if((input = fopen(argv[i], "r")) == NULL){
+			printf("fail to read");
+			exit(0);
+		}
 
-	test_trie_insert_empty(argc, argv);
-
-	test_trie_free_long(argc, argv);
-
-	// test_trie_negative_keys(argc, argv);
+		while(fgets(pass, MAX_LINE, input) != NULL){
+			len = strlen(pass);
+			if (len <= 1){
+				continue;
+			}
+			pass[len - 1] = '\0';  /*去掉换行符*/
 	
-	test_trie_insert_binary(argc, argv);
-	
+			// Trie 树的生成
+			test_trie_new_free(pass);
+			// Trie 树的插入
+			test_trie_insert(pass);
+			// Trie 树的查找
+			test_trie_lookup(pass);
+			// Trie 树的删除
+			test_trie_remove();
+
+			test_trie_replace(pass);
+
+			test_trie_insert_empty(pass);
+
+			test_trie_free_long(pass);
+
+			// test_trie_negative_keys(pass);
+			
+			test_trie_insert_binary(pass);
+			
+			// run_tests(tests);
+
+		}
+	}
+
 	// run_tests(tests);
+
+	if (input != NULL){
+		fclose(input);
+	}
 
 	return 0;
 }

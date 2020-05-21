@@ -18,10 +18,16 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <time.h>
+
 #include "bcrypt.h"
 #include "crypt_blowfish/ow-crypt.h"
 
 #define RANDBYTES (16)
+#define MAX_LINE 1024
 
 static int try_close(int fd)
 {
@@ -140,21 +146,21 @@ int bcrypt_checkpw(const char *passwd, const char hash[BCRYPT_HASHSIZE])
 	return timing_safe_strcmp(hash, outhash);
 }
 
-#ifdef TEST_BCRYPT
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+// #ifdef TEST_BCRYPT
+// #include <assert.h>
+// #include <stdio.h>
+// #include <string.h>
+// #include <time.h>
 
 int main(int argc, char *argv[])
 {
 	if (argc == 1){
 		return 0;
 	}
-	char* pass = argv[1];
-	if (strlen(pass) == 0){
-		return 0;
-	}
+	// char* pass = argv[1];
+	// if (strlen(pass) == 0){
+	// 	return 0;
+	// }
 	
 	// BCRYPT_HASHSIZE == 64
 	char salt[BCRYPT_HASHSIZE];
@@ -163,33 +169,58 @@ int main(int argc, char *argv[])
 	int ret;
 	int salt_len = 4;
 
-	for (salt_len = 4; salt_len <= 16; salt_len += 4){
-		ret = bcrypt_gensalt(salt_len, salt);
-		assert(ret == 0);
-		ret = bcrypt_hashpw(pass, salt, hash);
-		assert(ret == 0);
+	FILE *input;
+	char pass[MAX_LINE];  /*缓冲区*/
+	// char* pass = argv[1];
+	int len;             /*行字符个数*/
 
-		// change hash
-		hash[0] += 1;
-		ret = bcrypt_hashpw(pass, hash, hash_t);
-		// can't crypt password
-		assert(ret == 1);
-		assert(strcmp(hash, hash_t) != 0);
-		// error occured
-		assert(bcrypt_checkpw(pass, hash) == -1);
-		
-		hash[0] -= 1;
-		pass[0] += 1;
-		ret = bcrypt_hashpw(pass, hash, hash_t);
-		// can crypt password, but hash & hash_t mismatch
-		assert(ret == 0);
-		assert(strcmp(hash, hash_t) != 0);
-		// password mismatch
-	    assert(bcrypt_checkpw(pass, hash) > 0);
-	    assert(bcrypt_checkpw(pass, hash_t) == 0);
-		
-		printf("check finish, salt_len = %d\n", salt_len);
+	int i = 1;
+	for (i = 1;i < argc;i++){
+		if((input = fopen(argv[i], "r")) == NULL){
+			printf("fail to read");
+			exit(0);
+		}
+
+		while(fgets(pass, MAX_LINE, input) != NULL){
+			len = strlen(pass);
+			if (len <= 1){
+				continue;
+			}
+			pass[len - 1] = '\0';  /*去掉换行符*/
+
+			for (salt_len = 4; salt_len <= 8; salt_len += 4){
+				ret = bcrypt_gensalt(salt_len, salt);
+				assert(ret == 0);
+				ret = bcrypt_hashpw(pass, salt, hash);
+				assert(ret == 0);
+
+				// change hash
+				hash[0] += 1;
+				ret = bcrypt_hashpw(pass, hash, hash_t);
+				// can't crypt password
+				assert(ret == 1);
+				assert(strcmp(hash, hash_t) != 0);
+				// error occured
+				assert(bcrypt_checkpw(pass, hash) == -1);
+				
+				hash[0] -= 1;
+				pass[0] += 1;
+				ret = bcrypt_hashpw(pass, hash, hash_t);
+				// can crypt password, but hash & hash_t mismatch
+				assert(ret == 0);
+				assert(strcmp(hash, hash_t) != 0);
+				// password mismatch
+				assert(bcrypt_checkpw(pass, hash) > 0);
+				assert(bcrypt_checkpw(pass, hash_t) == 0);
+				
+				printf("check finish, salt_len = %d\n", salt_len);
+			}
+		}
+	}
+
+	if (input != NULL){
+		fclose(input);
 	}
 	return 0;
 }
-#endif
+// #endif

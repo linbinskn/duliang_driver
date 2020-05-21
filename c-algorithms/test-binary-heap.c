@@ -30,6 +30,7 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include "src/compare-int.h"
 
 #define NUM_TEST_VALUES 10000
+#define MAX_LINE 1024
 
 int test_array[NUM_TEST_VALUES];
 
@@ -56,17 +57,17 @@ void test_binary_heap_new_free(void)
 	binary_heap_free(heap);
 }
 
-void test_binary_heap_insert(int argc, char *argv[])
+void test_binary_heap_insert(char *argv)
 {
 	BinaryHeap *heap;
 	int i;
 
 	heap = binary_heap_new(BINARY_HEAP_TYPE_MIN, int_compare);
 
-	int len = strlen(argv[1]);
+	int len = strlen(argv);
 
 	for (i=0; i<len; ++i) {
-		test_array[i] = (int)argv[1][i];
+		test_array[i] = (int)argv[i];
 		assert(binary_heap_insert(heap, &test_array[i]) != 0);
 	}
 
@@ -77,7 +78,7 @@ void test_binary_heap_insert(int argc, char *argv[])
 	binary_heap_free(heap);
 }
 
-void test_min_heap(int argc, char *argv[])
+void test_min_heap(char *argv)
 {
 	BinaryHeap *heap;
 	int *val;
@@ -87,10 +88,13 @@ void test_min_heap(int argc, char *argv[])
 
 	/* Push a load of values onto the heap */
 
-	int len = strlen(argv[1]);
+	int len = strlen(argv);
 
 	for (i=0; i<len; ++i) {
-		test_array[i] = (int)argv[1][i];
+		if ((int)argv[i] <= 0){
+			continue;
+		}
+		test_array[i] = (int)argv[i];
 		assert(binary_heap_insert(heap, &test_array[i]) != 0);
 	}
 
@@ -99,7 +103,6 @@ void test_min_heap(int argc, char *argv[])
 	i = -1;
 	while (binary_heap_num_entries(heap) > 0) {
 		val = (int *) binary_heap_pop(heap);
-
 		// printf("val %d, i %d \n", *val, i);
 		assert(*val >= i);
 		i = *val;
@@ -113,7 +116,7 @@ void test_min_heap(int argc, char *argv[])
 	binary_heap_free(heap);
 }
 
-void test_max_heap(int argc, char *argv[])
+void test_max_heap(char *argv)
 {
 	BinaryHeap *heap;
 	int *val;
@@ -123,10 +126,13 @@ void test_max_heap(int argc, char *argv[])
 
 	/* Push a load of values onto the heap */
 
-	int len = strlen(argv[1]);
+	int len = strlen(argv);
 
 	for (i=0; i<len; ++i) {
-		test_array[i] = (int)argv[1][i];
+		if ((int)argv[i] >= NUM_TEST_VALUES * (len + 1)){
+			continue;
+		}
+		test_array[i] = (int)argv[i];
 		assert(binary_heap_insert(heap, &test_array[i]) != 0);
 	}
 
@@ -199,13 +205,37 @@ int main(int argc, char *argv[])
 {
 	test_binary_heap_new_free();
 	
-	test_binary_heap_insert(argc, argv);
-	
-	test_min_heap(argc, argv);
+	FILE *input;
+	char pass[MAX_LINE];  /*缓冲区*/
+	int len;             /*行字符个数*/
 
-	test_max_heap(argc, argv);
+	int i = 1;
+	for (i = 1;i < argc;i++){
+		if((input = fopen(argv[i], "r")) == NULL){
+			printf("fail to read");
+			exit(0);
+		}
+
+		while(fgets(pass, MAX_LINE, input) != NULL){
+			len = strlen(pass);
+			if (len <= 1){
+				continue;
+			}
+			pass[len - 1] = '\0';  /*去掉换行符*/
+
+			test_binary_heap_insert(pass);
+			
+			test_min_heap(pass);
+
+			test_max_heap(pass);
+		}
+	}
 
 	// run_tests(tests);
+
+	if (input != NULL){
+		fclose(input);
+	}
 
 	return 0;
 }
